@@ -17,15 +17,15 @@
 #include <math.h>
 /* -------------- Global variables ------------------------ */
 #define MAX_INT 2147483647 /* Maximum positive integer 2^31 - 1 */
-#define SIM_END_TIME 100000.0
+#define SIM_END_TIME 1000000.0
 #define SEED 0
-#define M 100			/* Set number of bozons */
+#define M 10			/* Set number of bozons */
 #define S 50.0	    	/* Set mean sleep duration */
 #define Y 25.0		    /* Set mean yodel duration */
 
 /* Defining event type indicators */
-#define SLEEP 1				    // This is for melodios time
-#define YODLING 2			    // THis is for screechy time
+#define SLEEP 1	
+#define YODLING 2			    
 
 /* TA states */
 #define SILENT 0
@@ -50,14 +50,17 @@ struct Event {
 struct TA {
 	/* State variables */
 	int status; /* Represents the status of the TA. It can be either IDLE or BUSY */    
-    double sleep_start_time;
-    double yodle_start_time;
+	double melodious_start_time;
+	double screech_start_time;
 
 	/* Statistical counters for the TA */
-	double total_sleep_time;
-	double total_yodle_time;
+	double total_screech_time;
+	double total_melodious_time;
+	double total_silent_time;
+
 	int total_yodle;
 	int total_missed_yodle;
+	int attempted_yodle;
 };
 
 
@@ -89,23 +92,28 @@ int main(void)
 	curr_time = 0.0;
     curr_event_index = 0;
 	Reza.status = SLEEP;
-	Reza.sleep_start_time = 0.0;
-	Reza.yodle_start_time = 0.0;
+
 	/* Statistical counters */
-	Reza.total_sleep_time = 0.0;
-	Reza.total_yodle_time = 0.0;
 	Reza.total_yodle = 0;
 	Reza.total_missed_yodle = 0;
+	Reza.screech_start_time = 0.0;
+
+	Reza.screech_start_time = 0.0;
+	Reza.melodious_start_time = 0.0;
+	Reza.total_screech_time = 0.0;
+	Reza.total_melodious_time = 0.0;
+	Reza.total_silent_time = 0.0;
+	Reza.attempted_yodle = 0;
 
 	// You should initialize your random number generator
 	// You should generate INITIAL EVENTS before the main loop starts
 	/* ************************************************************** */
-	//srandom(SEED);
+	srandom(SEED);
 
 	// Genearte the initial time of yodling of each bozons. Save it to struct with initial type of sleep.
 	for (int i=0; i< M; i++) {
 		double yodling_period = getExponentialVar(Y);
-        cout << yodling_period << endl;
+        //cout << yodling_period << endl;
         arraysof_Events[i].time = yodling_period;
         arraysof_Events[i].type = SLEEP;
 	}
@@ -134,8 +142,6 @@ int main(void)
 			 * Generating new Event(s)
 			 */
 			 
-
-			 
 			 // dont have to consdier silent case only meldodiosu screehcy
 			 // if you are in screech and bozons number >2 switch to meldious to  if bozons number >2 switch to screechy 
 			 // screechy to schrrechy or screechy to meldious
@@ -144,11 +150,11 @@ int main(void)
 				/* Updating state variable */
 				Reza.status = SCREECH;
 				// SCRATCH TIME 
-				Reza.yodle_start_time = curr_time;
-
+				Reza.screech_start_time = curr_time;
+				
 				/* Updating statistical counter */
 				// MELDIOUS START TIME 
-				Reza.total_sleep_time = Reza.total_sleep_time + (curr_time - Reza.sleep_start_time);
+				Reza.total_melodious_time = Reza.total_melodious_time + (curr_time - Reza.melodious_start_time);
 
 				/* Generating a Receive event (receiving student's next question) */
 				duration = getExponentialVar(S);
@@ -157,16 +163,16 @@ int main(void)
 				arraysof_Events[curr_event_index] = next_event;
 			 }
 			 
-			 else (Reza.status == SCREECH ) {
+			 else if (Reza.status == SCREECH) {
 				 if (Reza.total_yodle > 2) {
 					 /* Updating state variable */
 					Reza.status = SCREECH;
 					// SCRATCH TIME 
-					Reza.yodle_start_time = curr_time;
+					Reza.screech_start_time = curr_time;
 
 					/* Updating statistical counter */
 					// TOTAL SCRATCH TIME 
-					Reza.total_sleep_time = Reza.total_sleep_time + (curr_time - Reza.sleep_start_time)
+					Reza.total_screech_time = Reza.total_screech_time + (curr_time - Reza.screech_start_time);
 
 					/* Generating a Receive event (receiving student's next question) */
 					duration = getExponentialVar(S);
@@ -178,11 +184,11 @@ int main(void)
 					 /* Updating state variable */
 					Reza.status = MELODIOUS;
 					// MEDLIOUS TIME SHOULD BE 
-					Reza.yodle_start_time = curr_time; // DONT NEED THIS 
+					Reza.melodious_start_time = curr_time; 
 
 					/* Updating statistical counter */
 					// TOTAL SCRATCH TIME NEED
-					Reza.total_sleep_time = Reza.total_sleep_time + (curr_time - Reza.sleep_start_time)
+					Reza.total_screech_time = Reza.total_screech_time + (curr_time - Reza.screech_start_time);
 
 					/* Generating a Receive event (receiving student's next question) */
 					duration = getExponentialVar(S);
@@ -193,6 +199,7 @@ int main(void)
 					 
 			 }
 			 Reza.total_yodle = Reza.total_yodle - 1;
+			 Reza.attempted_yodle++;
 			break;
 
 	
@@ -210,10 +217,10 @@ int main(void)
 				/* Updating state variable */
 				Reza.status = MELODIOUS;
 				// MEDLIOUS START TIME 
-				Reza.sleep_start_time = curr_time;
+				Reza.melodious_start_time = curr_time;
 
 				/* Updating statistical counter */
-				Reza.total_yodle_time = Reza.total_yodle_time + (curr_time - Reza.yodle_start_time)
+				Reza.total_silent_time = Reza.total_silent_time + (curr_time - Reza.melodious_start_time);
 
 				/* Generating a sleep event  */
 				duration = getExponentialVar(Y);
@@ -224,13 +231,13 @@ int main(void)
 			
 			else if (Reza.status == MELODIOUS) {
 				/* Updating state variable */
-				Rez.stauts == SCREECH;
+				Reza.status == SCREECH;
 				// SCARTCH START TIME 
-				Reza.sleep_start_time = curr_time;
+				Reza.screech_start_time = curr_time;
 
 				/* Updating statistical counter */
 				// TOTAL MELDIOUS TIME 
-				Reza.total_yodle_time = Reza.total_yodle_time + (curr_time - Reza.yodle_start_time)
+				Reza.total_melodious_time = Reza.total_melodious_time + (curr_time - Reza.melodious_start_time);
 
 				/* Generating a sleep event  */
 				duration = getExponentialVar(Y);
@@ -238,14 +245,14 @@ int main(void)
 				next_event.type = SLEEP;
 				arraysof_Events[curr_event_index] = next_event;
 			}
-			else (Reza.status == SCREECH) {
+			else if (Reza.status == SCREECH) {
 				/* Updating state variable */
-				Rez.stauts == SCREECH;
+				Reza.status == SCREECH;
 				// TOTAL SCRATCH TIME 
-				Reza.total_yodle_time = Reza.total_yodle_time + (curr_time - Reza.yodle_start_time)
+				Reza.total_screech_time = Reza.total_screech_time + (curr_time - Reza.screech_start_time);
 
 				// SCRATCH START TIME 
-				Reza.sleep_start_time = curr_time;
+				Reza.screech_start_time = curr_time;
 
 				/* Updating statistical counter */
 
@@ -264,24 +271,38 @@ int main(void)
 			printf("Invalid type of event:");
 		}
 
-#ifdef DEBUG
-		printf("End of the main loop.\n");
-#endif
+//#ifdef DEBUG
+		//printf("End of the main loop.\n");
+//#endif
 	}
 		// How many bozons are yodling only if 1 bozon is yodling change it from screechy to meldious
 		
 	// You may need to update your statistical counters one last time based on the most recent state of the system
 	if (Reza.status == MELODIOUS) {
-		Reza.total_busy_time += curr_time - Reza.busy_start_time;
-	} else if (Reza.status == IDLE) {
+		Reza.total_melodious_time += curr_time - Reza.melodious_start_time;
+	} else if (Reza.status == SCREECH) {
+		Reza.total_screech_time += curr_time - Reza.screech_start_time;
+	}
+
+
+	/* Report */
+	printf("Simulation is finished for %.0lf \n", SIM_END_TIME);
+	printf("Total number of attmpted yodels = %d\n", Reza.attempted_yodle);
+	printf("percentage of silent= %.2lf%c\n", 100 * Reza.total_silent_time / curr_time, '%');
+	printf("percentage of melodious= %.2lf%c\n", 100 * Reza.total_melodious_time / curr_time, '%');
+	printf("percentage of screechy= %.2lf%c\n", 100 * Reza.total_screech_time / curr_time, '%');
+	printf("Screech time on the channel = %.2lf%c\n", 100 * Reza.total_screech_time / curr_time, '%');
+	
+	return 0;
+
+
+
+
+	/*else if (Reza.status == IDLE) {
 		Reza.total_idle_time += curr_time - Reza.idle_start_time;
 	}
+	*/	
 	// You can report your results at the end of the program
-
-	printf("Simulation is finished for %.0lf days.\n", SIM_END_TIME);
-	//printf("Total number of received e-mails = %d\n", Reza.total_received_emails);
-
-
 
 }
 
@@ -316,3 +337,5 @@ double getExponentialVar(double m)    //starting time of sleeping and starting t
 // beginning of the lsep - beginning of the yodle 
 
 // If Yolding call an exponential function again to generate 
+
+
